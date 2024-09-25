@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <readline/history.h>
 
 #define lab_VERSION_MAJOR 1
 #define lab_VERSION_MINOR 0
@@ -120,7 +122,15 @@ extern "C"
    */
   void parse_args(int argc, char **argv);
 
+  /**
+   * @brief Print the version of the shell
+   */
+  void print_version(void);
 
+  /**
+   * @brief Print the history of commands
+   */
+  void print_history(void);
 
 #ifdef __cplusplus
 } // extern "C"
