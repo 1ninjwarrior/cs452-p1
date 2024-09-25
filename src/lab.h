@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <pwd.h>
 #include <readline/history.h>
+#include <signal.h>
+#include <termios.h>
 
 #define lab_VERSION_MAJOR 1
 #define lab_VERSION_MINOR 0
@@ -131,6 +133,19 @@ extern "C"
    * @brief Print the history of commands
    */
   void print_history(void);
+
+  /**
+   * @brief Execute a command in a new process
+   *
+   * @param args The command to execute
+   * @return 1 on success, -1 on error
+   */
+  int execute_command(char **args);
+
+  /**
+   * @brief Set up the shell's signal handling
+   */
+  void setup_shell_signal_handlers(void);
 
 #ifdef __cplusplus
 } // extern "C"

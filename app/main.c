@@ -4,14 +4,22 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/wait.h>
 #include "../src/lab.h"
 
 #define DEFAULT_PROMPT "$ "
+#define MAX_ARGS 64
 
 int main(int argc, char *argv[]) {
     int opt;
     char *line;
     const char *prompt;
+    char *args[MAX_ARGS];
+    int arg_count;
+
+    // Set up signal handlers
+    setup_shell_signal_handlers();
 
     while ((opt = getopt(argc, argv, "v")) != -1) {
         switch (opt) {
@@ -36,18 +44,40 @@ int main(int argc, char *argv[]) {
 
     using_history();
     while ((line = readline(prompt)) != NULL) {
-        if (strcmp(line, "exit") == 0) {
-            break;
-        }
-        if (strncmp(line, "cd", 2) == 0) {
-            char **args = cmd_parse(line);
-            change_dir(args);
-            cmd_free(args);
-        } else if (strcmp(line, "history") == 0) {
-            print_history();
-        } else if (line[0] != '\0') {
+        if (line[0] != '\0') {
             add_history(line);
-            printf("You entered: %s\n", line);
+            
+            // Parse the command into arguments
+            arg_count = 0;
+            args[arg_count] = strtok(line, " \t\n");
+            while (args[arg_count] != NULL && arg_count < MAX_ARGS - 1) {
+                arg_count++;
+                args[arg_count] = strtok(NULL, " \t\n");
+            }
+            args[arg_count] = NULL;
+
+            if (arg_count > 0) {
+                if (strcmp(args[0], "exit") == 0) {
+                    break;
+                } else if (strcmp(args[0], "history") == 0) {
+                    print_history();
+                } else if (strcmp(args[0], "cd") == 0) {
+                    if (arg_count > 1) {
+                        if (chdir(args[1]) != 0) {
+                            perror("cd");
+                        }
+                    } else {
+                        // Change to home directory if no argument is provided
+                        const char *home = getenv("HOME");
+                        if (home && chdir(home) != 0) {
+                            perror("cd");
+                        }
+                    }
+                } else {
+                    // Execute external command
+                    execute_command(args);
+                }
+            }
         }
         free(line);
     }
