@@ -1,10 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include "../src/lab.h"
 
 int main(int argc, char *argv[]) {
     int opt;
+    char *line;
 
     while ((opt = getopt(argc, argv, "v")) != -1) {
         switch (opt) {
@@ -18,5 +21,16 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Shell is running...\n");
+
+    using_history();
+    while ((line = readline("$ ")) != NULL) {
+        if (line[0] != '\0') {
+            add_history(line);
+            printf("You entered: %s\n", line);
+        }
+        free(line);
+    }
+
+    printf("\nExiting shell...\n");
     return 0;
 }

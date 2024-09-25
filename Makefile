@@ -20,14 +20,15 @@ EXE_DEPS := $(EXE_OBJS:.o=.d)
 
 CFLAGS ?= -Wall -Wextra -fno-omit-frame-pointer -fsanitize=address -g -MMD -MP
 LDFLAGS ?= -pthread -lreadline
+LIBS ?= -lreadline
 
 all: $(TARGET_EXEC) $(TARGET_TEST)
 
 $(TARGET_EXEC): $(OBJS) $(EXE_OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(EXE_OBJS) -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OBJS) $(EXE_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 $(TARGET_TEST): $(OBJS) $(TEST_OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $(TEST_OBJS)  -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(OBJS) $(TEST_OBJS) -o $@ $(LDFLAGS) $(LIBS)
 
 $(BUILD_DIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
