@@ -47,11 +47,9 @@ int execute_command(char **args) {
     
     pid = fork();
     if (pid == 0) {
-        // Child process
         pid_t child = getpid();
         setpgid(child, child);
         
-        // Reset signal handlers to default
         signal(SIGINT, SIG_DFL);
         signal(SIGQUIT, SIG_DFL);
         signal(SIGTSTP, SIG_DFL);
@@ -63,7 +61,6 @@ int execute_command(char **args) {
             exit(EXIT_FAILURE);
         }
     } else {
-        // Parent process
         if (bg) {
             add_bg_job(pid, args);
             printf("[%d] %d %s\n", next_job_id, pid, args[0]);
@@ -72,7 +69,7 @@ int execute_command(char **args) {
             waitpid(pid, &status, WUNTRACED);
         }
     }
-    setup_shell_signal_handlers(); // Ensure signal handlers are reset after command execution
+    setup_shell_signal_handlers();
     return 1;
 }
 
@@ -202,10 +199,8 @@ char *trim_white(char *str) {
     while(isspace((unsigned char)*str)) str++;
 
     if(*str == 0) return str;
-
     end = str + strlen(str) - 1;
     while(end > str && isspace((unsigned char)*end)) end--;
-
     end[1] = '\0';
 
     return str;
@@ -241,7 +236,6 @@ bool do_builtin(struct shell *sh, char **argv) {
         print_jobs();
         return true;
     }
-
     return false;
 }
 
@@ -255,7 +249,7 @@ void print_jobs(void) {
             if (result == 0) {
                 printf("[%d] %d Running %s\n", bg_jobs[i].job_id, bg_jobs[i].pid, bg_jobs[i].command);
             } else if (result == bg_jobs[i].pid) {
-                printf("[%d] Done    %s\n", bg_jobs[i].job_id, bg_jobs[i].command);
+                printf("[%d] Done %s\n", bg_jobs[i].job_id, bg_jobs[i].command);
                 bg_jobs[i].pid = 0;
                 free(bg_jobs[i].command);
             } else if (result == -1) {

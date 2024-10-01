@@ -1,0 +1,24 @@
+Jaden Dawdy
+jadendawdy@u.boisestate.edu
+CS452
+Project 1
+
+For task 1 and 2, it was just the setup process so there was no need for planning.
+
+Task 3 was very simple. The only thing that needed to be done was adding the -v flag to the main function. Using a switch statement, it checks for argument -v and if there is one, it calls a method called print_version(). This method prints the version of the shell, which is 1.0.
+
+Task 4 was also simple. Since the code was already somewhat provided, it just required me to add the while loop where it reads the line inputs which I have done in other projects before.
+
+Task 5 to allow custom prompts was similar to Task 3. I had to look into the documentation for getenv but it ended up being pretty easy. I just added a getenv, where if it returns null, it just used the default prompt. If it isn't null, then it just keeps the value returned by the genenv as the prompt.
+
+Task 6 took a little bit to figure out due to adding multiple commands. The exit command was pretty easy to implement as it just checked if the readline was equal to "exit" and if it was, then it would exit the program. The cd command took the most time since it made me go into the documentation to understand how to implement it. I pretty much just implemented as described in the instructions. I use getenv and if getenv returns NULL the program falls back to the system calls getuid and getpwuid to find out the home directory of the user. For history I just used the given library and after each command is run, it adds to the history. When history is inputted, it prints the values that were added to the history.
+
+Task 7 was more difficult than the previous tasks. To understand, I looked into the fork() documentation and pretty much copied parts of it for the pid. It then required me to look into execvp documentation to understand how to execute a command. This was also easy to implement as it just requires the arg inputs and a check for errors. I also pretty much just copied the code from waitpid to make the process wait.
+
+Task 8 was very easy but also very confusing. Since I was running my code on a macbook, I couldn't get the ignore to work properly. I basically implemented the exact code that was provided, but I made sure to intialize the signals as IGN when initializing the shell. Then when a command was running, it would set it back to default until the wait command was done running.It worked on the first signal but then would exit the second time. At one point I copy and pasted the task 8 instruction into AI and it returned almost identical code to what I had before. I didn't implement it due to its similarity. After messing with it for an hour, I realized it might be due to the device and when I tried it on the codespace, it worked as expected.
+
+Task 9 wasn't terrible to implement. I first created a struct to store the job id, pid, and command. Then in the execute command method, I added a bg variable that would be 0 or 1 depending on if the command was run in the background or foreground. I then created a method to check for bg jobs and print them out. This method is called everytime a command is run, or when the bg or fg commands are used. If a command was completed, it would print that it was done.
+
+Task 10 was very simple since it was just a continuation of task 9. I just had to add a print_jobs method that printed any background jobs that were stored. When a job was printed that was done, it freed the job from the memory to save space. A value was then saved to let the program know what index to save the next value at.
+
+I achieved all functionality required by the project description. This includes, calling the program with the -v flag, printing the version, using custom prompts, using the cd, exit, history, and jobs commands, handling commands such as cd and ls -l -a, running commands in the background and foreground, and ignoring the SIGINT signal while commands are not running. 

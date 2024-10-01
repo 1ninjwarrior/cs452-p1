@@ -154,9 +154,9 @@ extern "C"
   void setup_shell_signal_handlers(void);
 
   void add_bg_job(pid_t pid, char **args);
+
   void check_bg_jobs(void);
 
-  void init_shell(void);
   extern int next_job_id;
 
 #ifdef __cplusplus
