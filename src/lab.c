@@ -1,4 +1,4 @@
-/**Update this file with the starter code**/
+/** Shell Starter Code **/
 #include "lab.h"
 #include <stdio.h>
 #include <string.h>
@@ -10,51 +10,124 @@
 #include <signal.h>
 #include <termios.h>
 #include <errno.h>
+#include <sys/types.h>
 
 #define SHELL_VERSION_MAJOR 1
 #define SHELL_VERSION_MINOR 0
+#define MAX_BG_JOBS 100
 
-// Global variable to store the current foreground process ID
 volatile pid_t foreground_pid = 0;
 
-// Signal handler for SIGINT and SIGTSTP
-void signal_handler(int signo) {
-    if (foreground_pid > 0) {
-        if (signo == SIGINT) {
-            kill(foreground_pid, SIGINT);
-        } else if (signo == SIGTSTP) {
-            kill(foreground_pid, SIGTSTP);
-            printf("\nChild process %d stopped. Resume with fg %d\n", foreground_pid, foreground_pid);
+struct bg_job {
+    int job_id;
+    pid_t pid;
+    char *command;
+};
+
+struct bg_job bg_jobs[MAX_BG_JOBS];
+int next_job_id = 1;
+
+/** Executes a command and handles foreground/background jobs **/
+int execute_command(char **args) {
+    pid_t pid;
+    int bg = 0;
+
+    if (args[0] == NULL || (args[0][0] == '&' && args[0][1] == '\0' && args[1] == NULL)) {
+        fprintf(stderr, "Error: Empty command\n");
+        return 1;
+    }
+
+    for (int i = 0; args[i] != NULL; i++) {
+        if (args[i + 1] == NULL && strcmp(args[i], "&") == 0) {
+            bg = 1;
+            args[i] = NULL;
+            break;
+        }
+    }
+    
+    pid = fork();
+    if (pid == 0) {
+        // Child process
+        pid_t child = getpid();
+        setpgid(child, child);
+        
+        // Reset signal handlers to default
+        signal(SIGINT, SIG_DFL);
+        signal(SIGQUIT, SIG_DFL);
+        signal(SIGTSTP, SIG_DFL);
+        signal(SIGTTIN, SIG_DFL);
+        signal(SIGTTOU, SIG_DFL);
+
+        if (execvp(args[0], args) == -1) {
+            perror("shell"); 
+            exit(EXIT_FAILURE);
         }
     } else {
-        // If no foreground process, just print a new line
-        printf("\n");
+        // Parent process
+        if (bg) {
+            add_bg_job(pid, args);
+            printf("[%d] %d %s\n", next_job_id, pid, args[0]);
+        } else {
+            int status;
+            waitpid(pid, &status, WUNTRACED);
+        }
     }
-    // Ensure the prompt is reprinted after handling the signal
-    fflush(stdout);
+    setup_shell_signal_handlers(); // Ensure signal handlers are reset after command execution
+    return 1;
 }
 
-// Function to set up signal handlers
-void setup_signal_handlers() {
-    struct sigaction sa;
-    sa.sa_handler = signal_handler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;
+/** Setup signal handling for the shell **/
+void setup_shell_signal_handlers(void) {
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+    signal(SIGTTIN, SIG_IGN);
+    signal(SIGTTOU, SIG_IGN);
+}
 
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
+/** Add a job to the background job list **/
+void add_bg_job(pid_t pid, char **args) {
+    for (int i = 0; i < MAX_BG_JOBS; i++) {
+        if (bg_jobs[i].pid == 0) {
+            bg_jobs[i].job_id = i+1;
+            next_job_id = i+1;
+            bg_jobs[i].pid = pid;
+
+            char full_command[1024] = "";
+            for (int j = 0; args[j] != NULL; j++) {
+                strcat(full_command, args[j]);
+                strcat(full_command, " ");
+            }
+            strcat(full_command, "&");
+            bg_jobs[i].command = strdup(full_command);
+            return;
+        }
     }
-    if (sigaction(SIGTSTP, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
+    fprintf(stderr, "Maximum number of background jobs reached\n");
+}
+
+/** Check status of background jobs and remove completed jobs **/
+void check_bg_jobs(void) {
+    for (int i = 0; i < MAX_BG_JOBS; i++) {
+        if (bg_jobs[i].pid != 0) {
+            int status;
+            pid_t result = waitpid(bg_jobs[i].pid, &status, WNOHANG);
+            if (result == bg_jobs[i].pid) {
+                printf("[%d] Done %s\n", bg_jobs[i].job_id, bg_jobs[i].command);
+                free(bg_jobs[i].command);
+
+                bg_jobs[i].pid = 0;
+            }
+        }
     }
 }
 
+/** Prints shell version **/
 void print_version(void) {
     printf("Shell version %d.%d\n", SHELL_VERSION_MAJOR, SHELL_VERSION_MINOR);
 }
 
+/** Change directory command **/
 int change_dir(char **dir) {
     const char *new_dir;
     
@@ -81,6 +154,7 @@ int change_dir(char **dir) {
     return 0;
 }
 
+/** Frees dynamically allocated command strings **/
 void cmd_free(char **cmd) {
     if (cmd == NULL) return;
     for (int i = 0; cmd[i] != NULL; i++) {
@@ -89,6 +163,7 @@ void cmd_free(char **cmd) {
     free(cmd);
 }
 
+/** Parses input command into individual arguments **/
 char **cmd_parse(const char *input) {
     char **result = NULL;
     char *token;
@@ -111,6 +186,7 @@ char **cmd_parse(const char *input) {
     return result;
 }
 
+/** Retrieves the shell prompt, defaults to "shell>" **/
 char *get_prompt(const char *env_var) {
     char *prompt = getenv(env_var);
     if (prompt == NULL) {
@@ -119,6 +195,7 @@ char *get_prompt(const char *env_var) {
     return strdup(prompt);
 }
 
+/** Trims white spaces from the input string **/
 char *trim_white(char *str) {
     char *end;
 
@@ -134,6 +211,7 @@ char *trim_white(char *str) {
     return str;
 }
 
+/** Prints the shell's history **/
 void print_history(void) {
     HIST_ENTRY *entry;
     int i;
@@ -148,6 +226,7 @@ void print_history(void) {
     }
 }
 
+/** Checks if the command is a shell built-in command **/
 bool do_builtin(struct shell *sh, char **argv) {
     UNUSED(sh);
 
@@ -158,63 +237,30 @@ bool do_builtin(struct shell *sh, char **argv) {
     } else if (strcmp(argv[0], "history") == 0) {
         print_history();
         return true;
+    } else if (strcmp(argv[0], "jobs") == 0) {
+        print_jobs();
+        return true;
     }
 
     return false;
 }
 
-int execute_command(char **args) {
-    pid_t pid, wpid;
-    int status;
-
-    pid = fork();
-    if (pid == 0) {
-        pid_t child = getpid();
-        setpgid(child, child);
-        tcsetpgrp(STDIN_FILENO, child);
-        
-        signal(SIGINT, SIG_DFL);
-        signal(SIGQUIT, SIG_DFL);
-        signal(SIGTSTP, SIG_DFL);
-        signal(SIGTTIN, SIG_DFL);
-        signal(SIGTTOU, SIG_DFL);
-
-        if (execvp(args[0], args) == -1) {
-            fprintf(stderr, "%s: command not found\n", args[0]);
-            exit(EXIT_FAILURE);
-        }
-    } else if (pid < 0) {
-        perror("shell");
-    } else {
-        setpgid(pid, pid);
-        tcsetpgrp(STDIN_FILENO, pid);
-        foreground_pid = pid;
-
-        do {
-            wpid = waitpid(pid, &status, WUNTRACED);
-            if (wpid == -1) {
-                if (errno != EINTR) {
-                    perror("waitpid");
-                    break;
-                }
+/** Prints all current background jobs **/
+void print_jobs(void) {
+    for (int i = 0; i < MAX_BG_JOBS; i++) {
+        if (bg_jobs[i].pid != 0) {
+            int status;
+            pid_t result = waitpid(bg_jobs[i].pid, &status, WNOHANG);
+            
+            if (result == 0) {
+                printf("[%d] %d Running %s\n", bg_jobs[i].job_id, bg_jobs[i].pid, bg_jobs[i].command);
+            } else if (result == bg_jobs[i].pid) {
+                printf("[%d] Done    %s\n", bg_jobs[i].job_id, bg_jobs[i].command);
+                bg_jobs[i].pid = 0;
+                free(bg_jobs[i].command);
+            } else if (result == -1) {
+                perror("waitpid");
             }
-        } while (!WIFEXITED(status) && !WIFSIGNALED(status) && !WIFSTOPPED(status));
-
-        tcsetpgrp(STDIN_FILENO, getpgrp());
-        foreground_pid = 0;
-
-        if (WIFSTOPPED(status)) {
-            printf("\nChild process %d stopped. Resume with fg %d\n", pid, pid);
         }
     }
-
-    return 1;
-}
-
-void setup_shell_signal_handlers(void) {
-    signal(SIGINT, SIG_IGN);
-    signal(SIGQUIT, SIG_IGN);
-    signal(SIGTSTP, SIG_IGN);
-    signal(SIGTTIN, SIG_IGN);
-    signal(SIGTTOU, SIG_IGN);
 }

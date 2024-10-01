@@ -8,7 +8,7 @@
             "program": "${workspaceRoot}/test-lab",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceRoot}",
             "environment": [],
             "externalConsole": false,
             "osx": {
@@ -37,7 +37,7 @@
             "program": "${workspaceRoot}/myprogram",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceRoot}",
             "environment": [],
             "externalConsole": false,
             "osx": {

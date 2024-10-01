@@ -17,8 +17,6 @@ int main(int argc, char *argv[]) {
     const char *prompt;
     char *args[MAX_ARGS];
     int arg_count;
-
-    // Set up signal handlers
     setup_shell_signal_handlers();
 
     while ((opt = getopt(argc, argv, "v")) != -1) {
@@ -47,7 +45,8 @@ int main(int argc, char *argv[]) {
         if (line[0] != '\0') {
             add_history(line);
             
-            // Parse the command into arguments
+            check_bg_jobs();
+
             arg_count = 0;
             args[arg_count] = strtok(line, " \t\n");
             while (args[arg_count] != NULL && arg_count < MAX_ARGS - 1) {
@@ -57,29 +56,15 @@ int main(int argc, char *argv[]) {
             args[arg_count] = NULL;
 
             if (arg_count > 0) {
-                if (strcmp(args[0], "exit") == 0) {
-                    break;
-                } else if (strcmp(args[0], "history") == 0) {
-                    print_history();
-                } else if (strcmp(args[0], "cd") == 0) {
-                    if (arg_count > 1) {
-                        if (chdir(args[1]) != 0) {
-                            perror("cd");
-                        }
-                    } else {
-                        // Change to home directory if no argument is provided
-                        const char *home = getenv("HOME");
-                        if (home && chdir(home) != 0) {
-                            perror("cd");
-                        }
-                    }
-                } else {
-                    // Execute external command
+                struct shell sh; 
+                if (!do_builtin(&sh, args)) {
                     execute_command(args);
                 }
             }
         }
         free(line);
+
+        check_bg_jobs();
     }
 
     printf("\nExiting shell...\n");

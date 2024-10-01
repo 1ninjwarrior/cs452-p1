@@ -6,6 +6,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <pwd.h>
+#include <stdio.h>
 #include <readline/history.h>
 #include <signal.h>
 #include <termios.h>
@@ -130,6 +131,11 @@ extern "C"
   void print_version(void);
 
   /**
+   * @brief Print the jobs that are currently running in the background
+   */
+  void print_jobs(void);
+
+  /**
    * @brief Print the history of commands
    */
   void print_history(void);
@@ -146,6 +152,12 @@ extern "C"
    * @brief Set up the shell's signal handling
    */
   void setup_shell_signal_handlers(void);
+
+  void add_bg_job(pid_t pid, char **args);
+  void check_bg_jobs(void);
+
+  void init_shell(void);
+  extern int next_job_id;
 
 #ifdef __cplusplus
 } // extern "C"
